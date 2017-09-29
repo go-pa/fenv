@@ -31,6 +31,13 @@ type FlagError struct {
 	Err      error      // the actual flag parse error
 }
 
+// EnvFlag is used bu the EnvSet.Visit* funcs.
+type EnvFlag struct {
+	Flag     *flag.Flag // the associated flag.Flag
+	Name     string     // the environment variable name which the value was parsed from, empty when no value was found.
+	AllNames []string   // all the env variable names mapped associated with the flag.
+}
+
 func (f FlagError) Error() string {
 	return fmt.Sprintf("failed to set flag %q with value %q", f.Flag.Name, f.Value)
 }
@@ -149,6 +156,21 @@ func (s *EnvSet) ParseEnv(e map[string]string) error {
 	return err
 }
 
+// Visit visits all non exluded EnvFlags in the flagset
+func (s *EnvSet) VisitAll(fn func(e EnvFlag)) {
+	s.fs.VisitAll(func(f *flag.Flag) {
+		n := f.Name
+		if s.exclude[n] {
+			return
+		}
+		fn(EnvFlag{
+			Flag:     f,
+			Name:     s.applied[n],
+			AllNames: s.allNames(f),
+		})
+	})
+}
+
 // returns the flag.Flag instace bound to ref or nil if not found
 func (s *EnvSet) findFlag(v interface{}) (*flag.Flag, error) {
 	rv := reflect.ValueOf(v)
@@ -166,6 +188,23 @@ func (s *EnvSet) findFlag(v interface{}) (*flag.Flag, error) {
 		}
 	})
 	return flg, nil
+}
+
+// allNames return all environment names for a given flag
+func (s *EnvSet) allNames(f *flag.Flag) []string {
+	var allNames []string
+	if names, ok := s.names[f.Name]; ok {
+		for _, name := range names {
+			if name == "_" {
+				name = fmtEnv(f.Name, s.prefix)
+			}
+			allNames = append(allNames, name)
+		}
+	}
+	if len(allNames) == 0 {
+		allNames = append(allNames, fmtEnv(f.Name, s.prefix))
+	}
+	return allNames
 }
 
 // fmtEnv formats a environment variable name as expected by this package.

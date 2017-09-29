@@ -3,6 +3,7 @@ package fenv
 import (
 	"encoding/json"
 	"flag"
+	"reflect"
 	"testing"
 )
 
@@ -118,7 +119,7 @@ func TestEnvSet(t *testing.T) {
 	fs.StringVar(&v, "test-1", "", "test variable")
 	fs.StringVar(&v2, "test.2", "", "test2")
 	fs.StringVar(&v3, "test3", "default", "test3")
-	es.Var(&v, "TEST", "_", "TEST")
+	es.Var(&v, "TEST4", "_", "TEST")
 	es.Var(&v2, "TEST", "_", "TEST")
 	es.Var(&v3)
 	assertPanic(t, func() { // not a registered flag
@@ -141,13 +142,14 @@ func TestEnvSet(t *testing.T) {
 		"TEST_1": "BOO",
 		"TEST_2": "FOO",
 		"TEST3":  "FOO",
+		"TEST4":  "V4",
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if err := fs.Parse([]string{}); err != nil {
 		t.Fatal(err)
 	}
-	if v != "BOO" {
+	if v != "V4" {
 		t.Fatal(v)
 	}
 	if v2 != "FOO" {
@@ -155,6 +157,25 @@ func TestEnvSet(t *testing.T) {
 	}
 	if v3 != "default" {
 		t.Fatal(v3)
+	}
+	{
+		expected := map[string]EnvFlag{
+			"test-1": {
+				Name:     "TEST4",
+				AllNames: []string{"TEST4", "TEST_1", "TEST"},
+			},
+			"test.2": {
+				Name:     "TEST_2",
+				AllNames: []string{"TEST", "TEST_2", "TEST"},
+			},
+		}
+		es.VisitAll(func(e EnvFlag) {
+			exp := expected[e.Flag.Name]
+			exp.Flag = e.Flag
+			if !reflect.DeepEqual(exp, e) {
+				t.Fatal(exp, e)
+			}
+		})
 	}
 }
 
