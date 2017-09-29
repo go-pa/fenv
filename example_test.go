@@ -57,5 +57,5 @@ func ExampleFlagSet() {
 	}
 
 	fmt.Println(s1, s2)
-	// output: v1 v2
+	// output: v1 v2.other
 }

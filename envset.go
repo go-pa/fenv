@@ -15,6 +15,7 @@ func NewEnvSet(fs *flag.FlagSet, prefix ...string) *EnvSet {
 		prefix:  strings.ToUpper(strings.Join(prefix, "_")),
 		names:   make(map[string][]string),
 		exclude: make(map[string]bool),
+		applied: make(map[string]string),
 	}
 }
 
@@ -36,11 +37,15 @@ func (f FlagError) Error() string {
 
 // EnvSet adds environment variable support for flag.FlagSet.
 type EnvSet struct {
-	fs      *flag.FlagSet
-	prefix  string
-	names   map[string][]string
-	exclude map[string]bool
-	parsed  bool
+	fs     *flag.FlagSet
+	prefix string
+
+	// the key for all these maps are based on the flag.Flag.Name
+	names   map[string][]string // all en var names
+	exclude map[string]bool     // excluded from env vars
+	applied map[string]string   // flags which value was set by a specific env var
+
+	parsed bool // true after Parse() has been run
 }
 
 // Var enables associattion with environment variable names other than the default auto generated ones
@@ -123,6 +128,7 @@ func (s *EnvSet) ParseEnv(e map[string]string) error {
 		if len(allNames) == 0 {
 			allNames = append(allNames, fmtEnv(f.Name, s.prefix))
 		}
+	eachName:
 		for _, name := range allNames {
 			v := e[name]
 			if v != "" {
@@ -135,6 +141,8 @@ func (s *EnvSet) ParseEnv(e map[string]string) error {
 						Err:      ferr,
 					}
 				}
+				s.applied[f.Name] = name
+				break eachName
 			}
 		}
 	})
