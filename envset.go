@@ -84,7 +84,7 @@ func (s *EnvSet) Parse() error {
 	return s.ParseEnv(OSEnv())
 }
 
-func (s *EnvSet) ParseEnv(e Env) error {
+func (s *EnvSet) ParseEnv(e map[string]string) error {
 	actual := make(map[string]bool)
 	s.fs.Visit(func(f *flag.Flag) {
 		actual[f.Name] = true
