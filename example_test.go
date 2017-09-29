@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/go-pa/fenv"
 )
@@ -24,14 +25,39 @@ func ExamplePackage() {
 	os.Setenv("ALT_NAME", "v2.alt")
 	os.Setenv("FLAG_2", "v2")
 
+	fmt.Println("before Parse()")
+	fenv.VisitAll(func(e fenv.EnvFlag) {
+		// don't print go test flags in example
+		if !strings.HasPrefix(e.Flag.Name, "test.") {
+			fmt.Printf("%s:%s\n", e.Flag.Name, e.Name)
+
+		}
+	})
+
 	// call fenv.Parse() before flag.Parse()
 	if err := fenv.Parse(); err != nil {
 		panic(err)
 	}
 	flag.Parse()
 
-	fmt.Println(s1, s2, flag.Parsed())
-	// output: v1 v2.alt true
+	fmt.Println("after Parse()")
+	fenv.VisitAll(func(e fenv.EnvFlag) {
+		// don't print go test flags in example
+		if !strings.HasPrefix(e.Flag.Name, "test.") {
+			fmt.Printf("%s:%s\n", e.Flag.Name, e.Name)
+		}
+	})
+
+	fmt.Println("values", s1, s2, flag.Parsed())
+	// output:
+	// before Parse()
+	// flag.1:
+	// flag2:
+	// after Parse()
+	// flag.1:FLAG_1
+	// flag2:ALT_NAME
+	// values v1 v2.alt true
+
 }
 
 func ExampleFlagSet() {
@@ -58,4 +84,5 @@ func ExampleFlagSet() {
 
 	fmt.Println(s1, s2)
 	// output: v1 v2.other
+
 }

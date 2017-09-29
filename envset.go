@@ -235,6 +235,10 @@ func Parsed() bool {
 	return commandLine.Parsed()
 }
 
+func VisitAll(fn func(e EnvFlag)) {
+	commandLine.VisitAll(fn)
+}
+
 var commandLine = NewEnvSet(flag.CommandLine, "")
 
 // Prefix sets the prefix used by the package level env set functions
