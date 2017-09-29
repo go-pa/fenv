@@ -23,7 +23,7 @@ func TestParseError(t *testing.T) {
 	var v int
 	fs.IntVar(&v, "abc123", 0, "")
 	es.Var(&v, "_", "t", "foo")
-	err := es.ParseEnv(Env{
+	err := es.ParseEnv(env{
 		"T": "NOTINT",
 	})
 	if err == nil {
@@ -72,7 +72,7 @@ func TestAlredyParsed(t *testing.T) {
 	if err := fs.Parse([]string{"-t1", "v1"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := es.ParseEnv(Env{
+	if err := es.ParseEnv(env{
 		"T1": "wrong",
 		"T2": "v2",
 	}); err != nil {
@@ -92,7 +92,7 @@ func TestPrefix(t *testing.T) {
 	var v string
 	fs.StringVar(&v, "testtest", "", "")
 	es.Var(&v)
-	if err := es.ParseEnv(Env{
+	if err := es.ParseEnv(env{
 		"PRE_FIXES_TEST1": "BOO",
 	}); err != nil {
 		t.Fatal(err)
@@ -139,7 +139,7 @@ func TestEnvSet(t *testing.T) {
 		var v string
 		es.Var(v)
 	})
-	if err := es.ParseEnv(Env{
+	if err := es.ParseEnv(env{
 		"TEST_1": "BOO",
 		"TEST_2": "FOO",
 		"TEST3":  "FOO",

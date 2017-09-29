@@ -7,7 +7,7 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	e := make(Env)
+	e := make(env)
 	err := e.parse([]string{"A=3", "A=B", "C=D"})
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +47,7 @@ func TestOSenv(t *testing.T) {
 }
 
 func TestSlice(t *testing.T) {
-	e := Env{
+	e := env{
 		"G": "H",
 		"A": "B",
 		"E": "F",
@@ -63,11 +63,11 @@ func TestSlice(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	e1 := Env{
+	e1 := env{
 		"A": "1",
 		"B": "1",
 	}
-	e2 := Env{
+	e2 := env{
 		"A": "2",
 		"C": "2",
 	}
@@ -86,7 +86,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestSet(t *testing.T) {
-	if err := (Env{"BVOPEA": "!@V#@JDF"}.set()); err != nil {
+	if err := (env{"BVOPEA": "!@V#@JDF"}.set()); err != nil {
 		t.Fatal(err)
 	}
 	if os.Getenv("BVOPEA") != "!@V#@JDF" {

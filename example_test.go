@@ -40,7 +40,7 @@ func ExampleFlagSet() {
 	es.Var(&s2, "other", "_")
 
 	// es.Parse() or es.ParseEnv() to parse a custom environment
-	if err := es.ParseEnv(fenv.Env{
+	if err := es.ParseEnv(map[string]string{
 		"MY_TEST1": "v1",
 		"MY_TEST2": "v2",
 		"OTHER":    "v2.other",
