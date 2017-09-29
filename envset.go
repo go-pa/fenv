@@ -58,8 +58,8 @@ type EnvSet struct {
 // Var enables associattion with environment variable names other than the default auto generated ones
 //
 // If no name argument is supplied the variable will be excluded from
-// environment pasrsing. The special name value "_" will be translated to the
-// automatically generated environment variable name.
+// environment pasrsing. The special name value emtpy string "" will be
+// translated to the automatically generated environment variable name.
 func (s *EnvSet) Var(v interface{}, names ...string) {
 	f, err := s.findFlag(v)
 	if err != nil {
@@ -123,18 +123,7 @@ func (s *EnvSet) ParseEnv(e map[string]string) error {
 		if actual[f.Name] || s.exclude[f.Name] {
 			return // skip if already set or excluded
 		}
-		var allNames []string
-		if names, ok := s.names[f.Name]; ok {
-			for _, name := range names {
-				if name == "_" {
-					name = fmtEnv(f.Name, s.prefix)
-				}
-				allNames = append(allNames, name)
-			}
-		}
-		if len(allNames) == 0 {
-			allNames = append(allNames, fmtEnv(f.Name, s.prefix))
-		}
+		allNames := s.allNames(f)
 	eachName:
 		for _, name := range allNames {
 			v := e[name]
@@ -195,7 +184,7 @@ func (s *EnvSet) allNames(f *flag.Flag) []string {
 	var allNames []string
 	if names, ok := s.names[f.Name]; ok {
 		for _, name := range names {
-			if name == "_" {
+			if name == "" {
 				name = fmtEnv(f.Name, s.prefix)
 			}
 			allNames = append(allNames, name)

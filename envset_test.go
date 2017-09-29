@@ -12,7 +12,7 @@ func TestParseError(t *testing.T) {
 	es := NewEnvSet(fs)
 	var v int
 	fs.IntVar(&v, "abc123", 0, "")
-	es.Var(&v, "_", "t", "foo")
+	es.Var(&v, "", "t", "foo")
 	err := es.ParseEnv(env{
 		"T": "NOTINT",
 	})
@@ -119,16 +119,16 @@ func TestEnvSet(t *testing.T) {
 	fs.StringVar(&v, "test-1", "", "test variable")
 	fs.StringVar(&v2, "test.2", "", "test2")
 	fs.StringVar(&v3, "test3", "default", "test3")
-	es.Var(&v, "TEST4", "_", "TEST")
-	es.Var(&v2, "TEST", "_", "TEST")
+	es.Var(&v, "TEST4", "", "TEST")
+	es.Var(&v2, "TEST", "", "TEST")
 	es.Var(&v3)
 	assertPanic(t, func() { // not a registered flag
 		var v string
-		es.Var(&v, "_", "TESTAGAIN")
+		es.Var(&v, "", "TESTAGAIN")
 	})
 	assertPanic(t, func() { // not a pointer to value
 		var v string
-		es.Var(v, "_", "TESTAGAIN")
+		es.Var(v, "", "TESTAGAIN")
 	})
 	assertPanic(t, func() { // not a registered flag
 		var v string
