@@ -1,6 +1,7 @@
 package fenv
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"reflect"
@@ -16,6 +17,9 @@ func NewEnvSet(fs *flag.FlagSet, prefix ...string) *EnvSet {
 		exclude: make(map[string]bool),
 	}
 }
+
+// ErrAlreadyParsed is returned by EnvSet.Parse() if the EnvSet already was parsed.
+var ErrAlreadyParsed = errors.New("the envset is already parsed")
 
 // FlagError
 type FlagError struct {
@@ -36,6 +40,7 @@ type EnvSet struct {
 	prefix  string
 	names   map[string][]string
 	exclude map[string]bool
+	parsed  bool
 }
 
 // Var enables associattion with environment variable names other than the default auto generated ones
@@ -80,11 +85,20 @@ func (s *EnvSet) Flag(flagName string, names ...string) {
 	s.Var(flg.Value, names...)
 }
 
+// Parsed reports whether s.Parse has been called.
+func (s *EnvSet) Parsed() bool {
+	return s.parsed
+}
+
 func (s *EnvSet) Parse() error {
 	return s.ParseEnv(OSEnv())
 }
 
 func (s *EnvSet) ParseEnv(e map[string]string) error {
+	if s.parsed {
+		return ErrAlreadyParsed
+	}
+	s.parsed = true
 	actual := make(map[string]bool)
 	s.fs.Visit(func(f *flag.Flag) {
 		actual[f.Name] = true
@@ -161,11 +175,14 @@ func fmtEnv(s string, prefix ...string) string {
 
 func Var(v interface{}, names ...string) {
 	commandLine.Var(v, names...)
-
 }
 
 func Parse() error {
 	return commandLine.Parse()
+}
+
+func Parsed() bool {
+	return commandLine.Parsed()
 }
 
 var commandLine = NewEnvSet(flag.CommandLine, "")

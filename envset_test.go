@@ -6,17 +6,6 @@ import (
 	"testing"
 )
 
-func TestCommandline(t *testing.T) {
-	var v1, v2 string
-	flag.StringVar(&v1, "tetete1", "", "")
-	flag.StringVar(&v2, "tetete2", "", "")
-	Var(&v1, "hello")
-	Var(&v2) // excludes v2 from envset
-	if err := Parse(); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestParseError(t *testing.T) {
 	fs := flag.NewFlagSet("test1", flag.ContinueOnError)
 	es := NewEnvSet(fs)
@@ -69,6 +58,9 @@ func TestAlredyParsed(t *testing.T) {
 	fs.StringVar(&v2, "t2", "def", "")
 	es.Var(&v1)
 	es.Var(&v2)
+	if es.Parsed() {
+		t.Fatal()
+	}
 	if err := fs.Parse([]string{"-t1", "v1"}); err != nil {
 		t.Fatal(err)
 	}
@@ -83,6 +75,12 @@ func TestAlredyParsed(t *testing.T) {
 	}
 	if v2 != "def" {
 		t.Fatal(v2)
+	}
+	if !es.Parsed() {
+		t.Fatal()
+	}
+	if es.Parse() != ErrAlreadyParsed {
+		t.Fatal(es.Parse())
 	}
 }
 

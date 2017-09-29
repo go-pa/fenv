@@ -10,10 +10,15 @@ import (
 )
 
 func ExamplePackage() {
-	var s1, s2 string
-	flag.StringVar(&s1, "flag.1", "", "") // env var FLAG_1 will be parsed
+	var s1, s2, s3 string
+
+	flag.StringVar(&s1, "flag.1", "", "") // env var FLAG_1 is automatically added
+
 	flag.StringVar(&s2, "flag2", "", "")
-	fenv.Var(&s2, "alt-name", "_")
+	fenv.Var(&s2, "alt-name", "_") // registers env names ALT_NAME and FLAG2.
+
+	flag.StringVar(&s3, "flag3", "", "")
+	fenv.Var(&s3) // excludes the var from being parsed as an enviroment variable.
 
 	os.Setenv("FLAG_1", "v1")
 	os.Setenv("ALT_NAME", "v2.alt")
@@ -25,8 +30,8 @@ func ExamplePackage() {
 	}
 	flag.Parse()
 
-	fmt.Println(s1, s2)
-	// output: v1 v2.alt
+	fmt.Println(s1, s2, flag.Parsed())
+	// output: v1 v2.alt true
 }
 
 func ExampleFlagSet() {
@@ -50,12 +55,6 @@ func ExampleFlagSet() {
 	if err := fs.Parse([]string{}); err != nil {
 		log.Fatal(err)
 	}
-
-	// call fenv.Parse() before flag.Parse()
-	if err := fenv.Parse(); err != nil {
-		panic(err)
-	}
-	flag.Parse()
 
 	fmt.Println(s1, s2)
 	// output: v1 v2
