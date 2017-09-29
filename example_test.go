@@ -66,7 +66,7 @@ func Example_flagSet() {
 	var s1, s2 string
 
 	fs := flag.NewFlagSet("example", flag.ContinueOnError)
-	es := fenv.NewEnvSet(fs, "my")
+	es := fenv.NewEnvSet(fs, "my_")
 
 	fs.StringVar(&s1, "test1", "", "")
 	fs.StringVar(&s2, "test2", "", "")

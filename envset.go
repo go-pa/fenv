@@ -198,11 +198,7 @@ func (s *EnvSet) allNames(f *flag.Flag) []string {
 
 // fmtEnv formats a environment variable name as expected by this package.
 func fmtEnv(s string, prefix ...string) string {
-	for _, v := range prefix {
-		if v != "" {
-			s = v + "_" + s
-		}
-	}
+	s = strings.Join(prefix, "_") + s
 	s = strings.Replace(s, ".", "_", -1)
 	s = strings.Replace(s, "-", "_", -1)
 	s = strings.ToUpper(s)

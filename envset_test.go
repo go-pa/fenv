@@ -3,6 +3,7 @@ package fenv
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -90,11 +91,14 @@ func TestPrefix(t *testing.T) {
 	es := NewEnvSet(fs, "pre", "fixes")
 	var v string
 	fs.StringVar(&v, "testtest", "", "")
-	es.Var(&v)
 	if err := es.ParseEnv(env{
-		"PRE_FIXES_TEST1": "BOO",
+		"PRE_FIXESTESTTEST": "BOO",
 	}); err != nil {
 		t.Fatal(err)
+	}
+
+	if v != "BOO" {
+		t.Fatal()
 	}
 }
 
@@ -186,4 +190,13 @@ func assertPanic(t *testing.T, f func()) {
 		}
 	}()
 	f()
+}
+
+// for debugging: es.VisitAll(visitPrint)
+func visitPrint(e EnvFlag) {
+	data, err := json.MarshalIndent(&e, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(data))
 }
