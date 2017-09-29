@@ -186,6 +186,9 @@ func Var(v interface{}, names ...string) {
 }
 
 func Parse() error {
+	if !commandLine.parsed {
+		commandLine.prefix = Prefix
+	}
 	return commandLine.Parse()
 }
 
@@ -194,3 +197,6 @@ func Parsed() bool {
 }
 
 var commandLine = NewEnvSet(flag.CommandLine, "")
+
+// Prefix sets the prefix used by the package level env set functions
+var Prefix = ""
