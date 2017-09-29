@@ -10,7 +10,8 @@ import (
 	"github.com/go-pa/fenv"
 )
 
-func ExamplePackage() {
+// Package level usage
+func Example_package() {
 	var s1, s2, s3 string
 
 	flag.StringVar(&s1, "flag.1", "", "") // env var FLAG_1 is automatically added
@@ -60,7 +61,8 @@ func ExamplePackage() {
 
 }
 
-func ExampleFlagSet() {
+// Use with fenv.EnvSet and flag.FlagSet
+func Example_flagSet() {
 	var s1, s2 string
 
 	fs := flag.NewFlagSet("example", flag.ContinueOnError)
