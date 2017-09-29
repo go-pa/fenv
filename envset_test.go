@@ -99,6 +99,20 @@ func TestPrefix(t *testing.T) {
 	}
 }
 
+func TestFlagByName(t *testing.T) {
+	fs := flag.NewFlagSet("test1", flag.ContinueOnError)
+	es := NewEnvSet(fs)
+	var v string
+	fs.StringVar(&v, "testtest", "", "")
+	assertPanic(t, func() { // not a registered flag
+		es.Flag("notaflag", "boo")
+	})
+	assertPanic(t, func() { // not a registered flag
+		es.Flag("TESTTEST", "boo")
+	})
+	es.Flag("testtest", "boo")
+}
+
 func TestEnvSet(t *testing.T) {
 	fs := flag.NewFlagSet("test1", flag.ContinueOnError)
 	es := NewEnvSet(fs)

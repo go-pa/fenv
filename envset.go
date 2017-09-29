@@ -64,6 +64,22 @@ func (s *EnvSet) Var(v interface{}, names ...string) {
 	delete(s.exclude, f.Name)
 }
 
+func (s *EnvSet) Flag(flagName string, names ...string) {
+	var flg *flag.Flag
+	s.fs.VisitAll(func(f *flag.Flag) {
+		if flg != nil {
+			return
+		}
+		if f.Name == flagName {
+			flg = f
+		}
+	})
+	if flg == nil {
+		panic(fmt.Sprintf("%s is not a registed flag in the flagset", flagName))
+	}
+	s.Var(flg.Value, names...)
+}
+
 func (s *EnvSet) Parse() error {
 	return s.ParseEnv(OSEnv())
 }
