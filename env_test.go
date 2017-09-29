@@ -8,7 +8,7 @@ import (
 
 func TestParse(t *testing.T) {
 	e := make(Env)
-	err := e.Parse([]string{"A=3", "A=B", "C=D"})
+	err := e.parse([]string{"A=3", "A=B", "C=D"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -18,7 +18,7 @@ func TestParse(t *testing.T) {
 	if _, ok := e["B"]; ok {
 		t.Fatal()
 	}
-	err = e.Parse([]string{"B=3", "2=3", "wrong", "4=2"})
+	err = e.parse([]string{"B=3", "2=3", "wrong", "4=2"})
 	if err.Error() != "expected format key=value in 'wrong'" {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestSlice(t *testing.T) {
 		"E": "F",
 		"C": "D",
 	}
-	data, err := json.Marshal(e.Slice())
+	data, err := json.Marshal(e.slice())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestUpdate(t *testing.T) {
 		"A": "2",
 		"C": "2",
 	}
-	e1.Update(e2)
+	e1.update(e2)
 
 	for k, v := range map[string]string{
 		"A": "2",
@@ -86,7 +86,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestSet(t *testing.T) {
-	if err := (Env{"BVOPEA": "!@V#@JDF"}.Set()); err != nil {
+	if err := (Env{"BVOPEA": "!@V#@JDF"}.set()); err != nil {
 		t.Fatal(err)
 	}
 	if os.Getenv("BVOPEA") != "!@V#@JDF" {

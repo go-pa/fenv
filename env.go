@@ -15,7 +15,7 @@ type Env map[string]string
 func OSEnv() Env {
 	oe := os.Environ()
 	e := make(Env, len(oe))
-	err := e.Parse(oe)
+	err := e.parse(oe)
 	if err != nil {
 		panic(err)
 	}
@@ -25,7 +25,7 @@ func OSEnv() Env {
 
 // Parse parses and sets environment variables in the KEY=VALUE string format
 // used by the standard library.
-func (e Env) Parse(oe []string) error {
+func (e Env) parse(oe []string) error {
 	for _, v := range oe {
 		kv := strings.SplitN(v, "=", 2)
 		if len(kv) < 2 {
@@ -38,7 +38,7 @@ func (e Env) Parse(oe []string) error {
 
 // Slice returns the contents of the env in the format of the environment used
 // by the standard library for use with os/exec and similar packages.
-func (e Env) Slice() []string {
+func (e Env) slice() []string {
 	var res []string
 	for k, v := range e {
 		res = append(res, k+"="+v)
@@ -48,14 +48,14 @@ func (e Env) Slice() []string {
 }
 
 // Update updates e with all entries from o.
-func (e Env) Update(o Env) {
+func (e Env) update(o Env) {
 	for k, v := range o {
 		e[k] = v
 	}
 }
 
 // Set sets all variables in the process environment.
-func (e Env) Set() error {
+func (e Env) set() error {
 	for k, v := range e {
 		err := os.Setenv(k, v)
 		if err != nil {
