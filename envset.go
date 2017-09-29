@@ -38,17 +38,11 @@ type EnvSet struct {
 	exclude map[string]bool
 }
 
-func (s *EnvSet) Exclude(v interface{}) {
-	f, err := s.findFlag(v)
-	if err != nil {
-		panic(err)
-	}
-	if f == nil {
-		panic(fmt.Sprintf("%T (%v) is not a member of the flagset", v, v))
-	}
-	s.exclude[f.Name] = true
-}
-
+// Var enables associattion with environment variable names other than the default auto generated ones
+//
+// If no name argument is supplied the variable will be excluded from
+// environment pasrsing. The special name value "_" will be translated to the
+// automatically generated environment variable name.
 func (s *EnvSet) Var(v interface{}, names ...string) {
 	f, err := s.findFlag(v)
 	if err != nil {
@@ -57,10 +51,17 @@ func (s *EnvSet) Var(v interface{}, names ...string) {
 	if f == nil {
 		panic(fmt.Sprintf("%T (%v) is not a member of the flagset", v, v))
 	}
+	if len(names) == 0 {
+		s.exclude[f.Name] = true
+		delete(s.names, f.Name)
+		return
+	}
+
 	for i, v := range names {
 		names[i] = fmtEnv(v)
 	}
 	s.names[f.Name] = names
+	delete(s.exclude, f.Name)
 }
 
 func (s *EnvSet) Parse() error {
@@ -140,10 +141,6 @@ func fmtEnv(s string, prefix ...string) string {
 	s = strings.Replace(s, "-", "_", -1)
 	s = strings.ToUpper(s)
 	return s
-}
-
-func Exclude(v interface{}) {
-	commandLine.Exclude(v)
 }
 
 func Var(v interface{}, names ...string) {

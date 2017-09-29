@@ -11,7 +11,7 @@ func TestCommandline(t *testing.T) {
 	flag.StringVar(&v1, "tetete1", "", "")
 	flag.StringVar(&v2, "tetete2", "", "")
 	Var(&v1, "hello")
-	Exclude(&v2)
+	Var(&v2) // excludes v2 from envset
 	if err := Parse(); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestEnvSet(t *testing.T) {
 	fs.StringVar(&v3, "test3", "default", "test3")
 	es.Var(&v, "TEST", "_", "TEST")
 	es.Var(&v2, "TEST", "_", "TEST")
-	es.Exclude(&v3)
+	es.Var(&v3)
 	assertPanic(t, func() { // not a registered flag
 		var v string
 		es.Var(&v, "_", "TESTAGAIN")
@@ -119,11 +119,11 @@ func TestEnvSet(t *testing.T) {
 	})
 	assertPanic(t, func() { // not a registered flag
 		var v string
-		es.Exclude(&v)
+		es.Var(&v)
 	})
 	assertPanic(t, func() { // not a pointer to value
 		var v string
-		es.Exclude(v)
+		es.Var(v)
 	})
 	if err := es.ParseEnv(Env{
 		"TEST_1": "BOO",
