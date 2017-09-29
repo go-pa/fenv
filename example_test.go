@@ -17,7 +17,7 @@ func Example_package() {
 	flag.StringVar(&s1, "flag.1", "", "") // env var FLAG_1 is automatically added
 
 	flag.StringVar(&s2, "flag2", "", "")
-	fenv.Var(&s2, "alt-name", "_") // registers env names ALT_NAME and FLAG2.
+	fenv.Var(&s2, "alt-name", "") // registers env names ALT_NAME and FLAG2.
 
 	flag.StringVar(&s3, "flag3", "", "")
 	fenv.Var(&s3) // excludes the var from being parsed as an enviroment variable.
@@ -70,7 +70,7 @@ func Example_flagSet() {
 
 	fs.StringVar(&s1, "test1", "", "")
 	fs.StringVar(&s2, "test2", "", "")
-	es.Var(&s2, "other", "_")
+	es.Var(&s2, "other", "")
 
 	// es.Parse() or es.ParseEnv() to parse a custom environment
 	if err := es.ParseEnv(map[string]string{
