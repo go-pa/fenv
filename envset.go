@@ -16,6 +16,7 @@ func NewEnvSet(fs *flag.FlagSet, opt ...Option) *EnvSet {
 		exclude: make(map[string]bool),
 		applied: make(map[string]string),
 		env:     make(map[string]string),
+		errs:    make(map[string]error),
 	}
 	for _, o := range opt {
 		o(es)
@@ -25,11 +26,20 @@ func NewEnvSet(fs *flag.FlagSet, opt ...Option) *EnvSet {
 
 // EnvFlag is used bu the EnvSet.Visit* funcs.
 type EnvFlag struct {
-	Flag     *flag.Flag // the associated flag.Flag
-	Name     string     // the environment variable name which the value was parsed from, empty when no value was found.
-	Value    string     // the value of the Name environment variable
-	AllNames []string   // all the env variable names mapped associated with the flag.
-	IsSet    bool       // true when the flag has been sucessfully set by the envsdert
+	// the associated flag.Flag
+	Flag *flag.Flag
+	// the environment variable name which the value for flag parsing was
+	// extracted from. This field is set regardless of if the flag.Set
+	// succeeds or fails.
+	Name string
+	// the value of the Name environment variable
+	Value string
+	// all the env variable names mapped associated with the flag.
+	AllNames []string
+	// true when the flag has been sucessfully set by the envsdert
+	IsSet bool
+	// error caused by flag.Set
+	Err error
 }
 
 // ErrAlreadyParsed is returned by EnvSet.Parse() if the EnvSet already was parsed.
@@ -37,11 +47,16 @@ var ErrAlreadyParsed = errors.New("the envset is already parsed")
 
 // FlagError
 type FlagError struct {
-	Flag     *flag.Flag // the associated flag.Flag
-	Value    string     // the value which failed to parse
-	Name     string     // the environment variable name which failed to parse
-	AllNames []string   // all the env variable names mapped associated with the flag
-	Err      error      // the actual flag parse error
+	// the associated flag.Flag
+	Flag *flag.Flag
+	// the value which failed to parse
+	Value string
+	// the environment variable name which failed to parse
+	Name string
+	// all the env variable names mapped associated with the flag
+	AllNames []string
+	// the actual flag parse error
+	Err error
 }
 
 func (f FlagError) Error() string {
@@ -56,16 +71,24 @@ func Prefix(prefix ...string) Option {
 	}
 }
 
+func ContinueOnError() Option {
+	return func(e *EnvSet) {
+		e.continueOnError = true
+	}
+}
+
 // EnvSet adds environment variable support for flag.FlagSet.
 type EnvSet struct {
-	fs     *flag.FlagSet
-	prefix string
+	fs              *flag.FlagSet
+	prefix          string
+	continueOnError bool // parses all flags even if one fails
 
 	// the key for all these maps are based on the flag.Flag.Name
 	names   map[string][]string // all en var names
 	exclude map[string]bool     // excluded from env vars
 	applied map[string]string   // flags which value was set by a specific env var
 	env     map[string]string   // the environment when parse was run
+	errs    map[string]error    // errors which occured during flag.Set()
 	parsed  bool                // true after Parse() has been run
 }
 
@@ -136,19 +159,18 @@ func (s *EnvSet) ParseEnv(e map[string]string) error {
 		}
 		allNames := s.allNames(f)
 
-		if err != nil {
-			return
-		}
 		if actual[f.Name] {
 			return // skip if already set
 		}
-
 	eachName:
 		for _, name := range allNames {
 			v := e[name]
 			if v != "" {
-				if err == nil {
+				s.applied[f.Name] = name
+				s.env[name] = v
+				if s.continueOnError || err == nil {
 					if ferr := f.Value.Set(v); ferr != nil {
+						s.errs[f.Name] = ferr
 						err = FlagError{
 							Flag:     f,
 							Value:    v,
@@ -158,8 +180,6 @@ func (s *EnvSet) ParseEnv(e map[string]string) error {
 						}
 					}
 				}
-				s.applied[f.Name] = name
-				s.env[name] = v
 				break eachName
 			}
 		}
@@ -184,6 +204,7 @@ func (s *EnvSet) VisitAll(fn func(e EnvFlag)) {
 			AllNames: s.allNames(f),
 			IsSet:    actual[f.Name],
 			Value:    s.env[s.applied[n]],
+			Err:      s.errs[f.Name],
 		})
 	})
 }

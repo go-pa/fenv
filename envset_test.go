@@ -11,11 +11,14 @@ import (
 func TestParseError(t *testing.T) {
 	fs := flag.NewFlagSet("test1", flag.ContinueOnError)
 	es := NewEnvSet(fs)
-	var v int
+	var v, v2 int
 	fs.IntVar(&v, "abc123", 0, "")
+	fs.IntVar(&v2, "abc124", 0, "")
 	es.Var(&v, "", "t", "foo")
+	es.Var(&v2, "", "d")
 	err := es.ParseEnv(env{
 		"T": "NOTINT",
+		"D": "NOTINT",
 	})
 	if err == nil {
 		t.Fatal("should have failed")
@@ -50,7 +53,42 @@ func TestParseError(t *testing.T) {
 	if string(data) != expect {
 		t.Fatalf("\ngot:\n%s\nexpect:\n%s", string(data), expect)
 	}
+	es.VisitAll(func(e EnvFlag) {
+		switch e.Name {
+		case "T":
+			if e.Err == nil {
+				t.Fatal(e.Name)
+			}
+		case "D":
+			if e.Err != nil {
+				t.Fatal(e.Name)
+			}
+		default:
+			t.Fatal(e.Name)
+		}
+	})
+}
 
+func TestContinueOnError(t *testing.T) {
+	fs := flag.NewFlagSet("test1", flag.ContinueOnError)
+	es := NewEnvSet(fs, ContinueOnError())
+	var v, v2 int
+	fs.IntVar(&v, "abc123", 0, "")
+	fs.IntVar(&v2, "abc124", 0, "")
+	es.Var(&v, "", "t", "foo")
+	es.Var(&v2, "", "d")
+	err := es.ParseEnv(env{
+		"T": "NOTINT",
+		"D": "NOTINT",
+	})
+	if err == nil {
+		t.Fatal("should have failed")
+	}
+	es.VisitAll(func(e EnvFlag) {
+		if e.Err == nil {
+			t.Fatal(e.Name)
+		}
+	})
 }
 
 func TestAlredyParsed(t *testing.T) {
