@@ -45,6 +45,9 @@ type EnvFlag struct {
 // ErrAlreadyParsed is returned by EnvSet.Parse() if the EnvSet already was parsed.
 var ErrAlreadyParsed = errors.New("the envset is already parsed")
 
+// ErrMultipleSet is returned by EnvSet.Parse() if the ContinueOnError is enabled and more than one flag failed to be set.
+var ErrMultipleSet = errors.New("multiple errors encountered when calling flag.Set()")
+
 // FlagError
 type FlagError struct {
 	// the associated flag.Flag
@@ -152,13 +155,15 @@ func (s *EnvSet) ParseEnv(e map[string]string) error {
 	s.fs.Visit(func(f *flag.Flag) {
 		actual[f.Name] = true
 	})
-	var err error
+	var (
+		err  error
+		nerr int
+	)
 	s.fs.VisitAll(func(f *flag.Flag) {
 		if s.exclude[f.Name] {
 			return
 		}
 		allNames := s.allNames(f)
-
 		if actual[f.Name] {
 			return // skip if already set
 		}
@@ -170,6 +175,7 @@ func (s *EnvSet) ParseEnv(e map[string]string) error {
 				s.env[name] = v
 				if s.continueOnError || err == nil {
 					if ferr := f.Value.Set(v); ferr != nil {
+						nerr++
 						s.errs[f.Name] = ferr
 						err = FlagError{
 							Flag:     f,
@@ -184,6 +190,9 @@ func (s *EnvSet) ParseEnv(e map[string]string) error {
 			}
 		}
 	})
+	if nerr > 1 {
+		return ErrMultipleSet
+	}
 	return err
 }
 
