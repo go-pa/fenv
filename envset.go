@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 // NewEnvSet returns a *EnvSet
@@ -264,25 +265,38 @@ func fmtEnv(s string, prefix ...string) string {
 }
 
 func Var(v interface{}, names ...string) {
+	commandLineMu.Lock()
+	defer commandLineMu.Unlock()
 	commandLine.Var(v, names...)
 }
 
 func Parse() error {
+	commandLineMu.Lock()
+	defer commandLineMu.Unlock()
 	return commandLine.Parse()
 }
 
 func Parsed() bool {
+	commandLineMu.Lock()
+	defer commandLineMu.Unlock()
 	return commandLine.Parsed()
 }
 
 func VisitAll(fn func(e EnvFlag)) {
+	commandLineMu.Lock()
+	defer commandLineMu.Unlock()
 	commandLine.VisitAll(fn)
 }
 
-var commandLine = NewEnvSet(flag.CommandLine)
+var (
+	commandLineMu sync.Mutex
+	commandLine   = NewEnvSet(flag.CommandLine)
+)
 
 // CommandLinePrefix sets the prefix used by the package level env set functions.
 func CommandLinePrefix(prefix ...string) {
+	commandLineMu.Lock()
+	defer commandLineMu.Unlock()
 	if commandLine.prefix != "" {
 		panic("prefix already set: " + commandLine.prefix)
 	}
