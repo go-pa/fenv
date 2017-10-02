@@ -84,6 +84,9 @@ func TestContinueOnError(t *testing.T) {
 	if err == nil {
 		t.Fatal("should have failed")
 	}
+	if err != ErrMultipleSet {
+		t.Fatal(err)
+	}
 	es.VisitAll(func(e EnvFlag) {
 		if e.Err == nil {
 			t.Fatal(e.Name)
