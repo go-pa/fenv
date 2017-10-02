@@ -24,6 +24,11 @@ func NewEnvSet(fs *flag.FlagSet, opt ...Option) *EnvSet {
 	return es
 }
 
+func ParseSet(fs *flag.FlagSet, opt ...Option) error {
+	es := NewEnvSet(fs, opt...)
+	return es.Parse()
+}
+
 // EnvFlag is used bu the EnvSet.Visit* funcs.
 type EnvFlag struct {
 	// the associated flag.Flag
