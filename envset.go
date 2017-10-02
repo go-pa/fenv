@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync"
 )
 
 // NewEnvSet returns a *EnvSet
@@ -65,20 +64,6 @@ type FlagError struct {
 
 func (f FlagError) Error() string {
 	return fmt.Sprintf("failed to set flag %q with value %q", f.Flag.Name, f.Value)
-}
-
-type Option func(e *EnvSet)
-
-func Prefix(prefix ...string) Option {
-	return func(e *EnvSet) {
-		e.prefix = strings.ToUpper(strings.Join(prefix, "_"))
-	}
-}
-
-func ContinueOnError() Option {
-	return func(e *EnvSet) {
-		e.continueOnError = true
-	}
 }
 
 // EnvSet adds environment variable support for flag.FlagSet.
@@ -262,46 +247,4 @@ func fmtEnv(s string, prefix ...string) string {
 	s = strings.Replace(s, "-", "_", -1)
 	s = strings.ToUpper(s)
 	return s
-}
-
-func Var(v interface{}, names ...string) {
-	commandLineMu.Lock()
-	defer commandLineMu.Unlock()
-	commandLine.Var(v, names...)
-}
-
-func Parse() error {
-	commandLineMu.Lock()
-	defer commandLineMu.Unlock()
-	return commandLine.Parse()
-}
-
-func Parsed() bool {
-	commandLineMu.Lock()
-	defer commandLineMu.Unlock()
-	return commandLine.Parsed()
-}
-
-func VisitAll(fn func(e EnvFlag)) {
-	commandLineMu.Lock()
-	defer commandLineMu.Unlock()
-	commandLine.VisitAll(fn)
-}
-
-var (
-	commandLineMu sync.Mutex
-	commandLine   = NewEnvSet(flag.CommandLine)
-)
-
-// CommandLinePrefix sets the prefix used by the package level env set functions.
-func CommandLinePrefix(prefix ...string) {
-	commandLineMu.Lock()
-	defer commandLineMu.Unlock()
-	if commandLine.prefix != "" {
-		panic("prefix already set: " + commandLine.prefix)
-	}
-	if Parsed() {
-		panic("default commandline envset already parsed")
-	}
-	commandLine.prefix = strings.ToUpper(strings.Join(prefix, "_"))
 }
