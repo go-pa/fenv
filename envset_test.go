@@ -50,11 +50,12 @@ func TestParseError(t *testing.T) {
 	if string(data) != expect {
 		t.Fatalf("\ngot:\n%s\nexpect:\n%s", string(data), expect)
 	}
+
 }
 
 func TestAlredyParsed(t *testing.T) {
 	fs := flag.NewFlagSet("test1", flag.ContinueOnError)
-	es := NewEnvSet(fs, "pre", "fixes")
+	es := NewEnvSet(fs, Prefix("pre", "fixes"))
 	var v1, v2 string
 	fs.StringVar(&v1, "t1", "def", "")
 	fs.StringVar(&v2, "t2", "def", "")
@@ -88,7 +89,7 @@ func TestAlredyParsed(t *testing.T) {
 
 func TestPrefix(t *testing.T) {
 	fs := flag.NewFlagSet("test1", flag.ContinueOnError)
-	es := NewEnvSet(fs, "pre", "fixes")
+	es := NewEnvSet(fs, Prefix("pre", "fixes"))
 	var v string
 	fs.StringVar(&v, "testtest", "", "")
 	if err := es.ParseEnv(env{
@@ -167,10 +168,12 @@ func TestEnvSet(t *testing.T) {
 			"test-1": {
 				Name:     "TEST4",
 				AllNames: []string{"TEST4", "TEST_1", "TEST"},
+				Value:    "V4",
 			},
 			"test.2": {
 				Name:     "TEST_2",
 				AllNames: []string{"TEST", "TEST_2", "TEST"},
+				Value:    "FOO",
 			},
 		}
 		es.VisitAll(func(e EnvFlag) {

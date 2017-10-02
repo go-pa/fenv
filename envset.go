@@ -8,15 +8,28 @@ import (
 	"strings"
 )
 
-// NewEnvSet returns a *EnvSet tied to the
-func NewEnvSet(fs *flag.FlagSet, prefix ...string) *EnvSet {
-	return &EnvSet{
+// NewEnvSet returns a *EnvSet
+func NewEnvSet(fs *flag.FlagSet, opt ...Option) *EnvSet {
+	es := &EnvSet{
 		fs:      fs,
-		prefix:  strings.ToUpper(strings.Join(prefix, "_")),
 		names:   make(map[string][]string),
 		exclude: make(map[string]bool),
 		applied: make(map[string]string),
+		env:     make(map[string]string),
 	}
+	for _, o := range opt {
+		o(es)
+	}
+	return es
+}
+
+// EnvFlag is used bu the EnvSet.Visit* funcs.
+type EnvFlag struct {
+	Flag     *flag.Flag // the associated flag.Flag
+	Name     string     // the environment variable name which the value was parsed from, empty when no value was found.
+	Value    string     // the value of the Name environment variable
+	AllNames []string   // all the env variable names mapped associated with the flag.
+	IsSet    bool       // true when the flag has been sucessfully set by the envsdert
 }
 
 // ErrAlreadyParsed is returned by EnvSet.Parse() if the EnvSet already was parsed.
@@ -31,15 +44,16 @@ type FlagError struct {
 	Err      error      // the actual flag parse error
 }
 
-// EnvFlag is used bu the EnvSet.Visit* funcs.
-type EnvFlag struct {
-	Flag     *flag.Flag // the associated flag.Flag
-	Name     string     // the environment variable name which the value was parsed from, empty when no value was found.
-	AllNames []string   // all the env variable names mapped associated with the flag.
-}
-
 func (f FlagError) Error() string {
 	return fmt.Sprintf("failed to set flag %q with value %q", f.Flag.Name, f.Value)
+}
+
+type Option func(e *EnvSet)
+
+func Prefix(prefix ...string) Option {
+	return func(e *EnvSet) {
+		e.prefix = strings.ToUpper(strings.Join(prefix, "_"))
+	}
 }
 
 // EnvSet adds environment variable support for flag.FlagSet.
@@ -51,8 +65,8 @@ type EnvSet struct {
 	names   map[string][]string // all en var names
 	exclude map[string]bool     // excluded from env vars
 	applied map[string]string   // flags which value was set by a specific env var
-
-	parsed bool // true after Parse() has been run
+	env     map[string]string   // the environment when parse was run
+	parsed  bool                // true after Parse() has been run
 }
 
 // Var enables associattion with environment variable names other than the default auto generated ones
@@ -117,27 +131,35 @@ func (s *EnvSet) ParseEnv(e map[string]string) error {
 	})
 	var err error
 	s.fs.VisitAll(func(f *flag.Flag) {
+		if s.exclude[f.Name] {
+			return
+		}
+		allNames := s.allNames(f)
+
 		if err != nil {
 			return
 		}
-		if actual[f.Name] || s.exclude[f.Name] {
-			return // skip if already set or excluded
+		if actual[f.Name] {
+			return // skip if already set
 		}
-		allNames := s.allNames(f)
+
 	eachName:
 		for _, name := range allNames {
 			v := e[name]
 			if v != "" {
-				if ferr := f.Value.Set(v); ferr != nil {
-					err = FlagError{
-						Flag:     f,
-						Value:    v,
-						Name:     name,
-						AllNames: allNames,
-						Err:      ferr,
+				if err == nil {
+					if ferr := f.Value.Set(v); ferr != nil {
+						err = FlagError{
+							Flag:     f,
+							Value:    v,
+							Name:     name,
+							AllNames: allNames,
+							Err:      ferr,
+						}
 					}
 				}
 				s.applied[f.Name] = name
+				s.env[name] = v
 				break eachName
 			}
 		}
@@ -147,6 +169,10 @@ func (s *EnvSet) ParseEnv(e map[string]string) error {
 
 // Visit visits all non exluded EnvFlags in the flagset
 func (s *EnvSet) VisitAll(fn func(e EnvFlag)) {
+	actual := make(map[string]bool)
+	s.fs.Visit(func(f *flag.Flag) {
+		actual[f.Name] = true
+	})
 	s.fs.VisitAll(func(f *flag.Flag) {
 		n := f.Name
 		if s.exclude[n] {
@@ -156,6 +182,8 @@ func (s *EnvSet) VisitAll(fn func(e EnvFlag)) {
 			Flag:     f,
 			Name:     s.applied[n],
 			AllNames: s.allNames(f),
+			IsSet:    actual[f.Name],
+			Value:    s.env[s.applied[n]],
 		})
 	})
 }
@@ -179,7 +207,7 @@ func (s *EnvSet) findFlag(v interface{}) (*flag.Flag, error) {
 	return flg, nil
 }
 
-// allNames return all environment names for a given flag
+// allNames return all environment namesg for a given flag
 func (s *EnvSet) allNames(f *flag.Flag) []string {
 	var allNames []string
 	if names, ok := s.names[f.Name]; ok {
@@ -210,9 +238,6 @@ func Var(v interface{}, names ...string) {
 }
 
 func Parse() error {
-	if !commandLine.parsed {
-		commandLine.prefix = Prefix
-	}
 	return commandLine.Parse()
 }
 
@@ -224,7 +249,15 @@ func VisitAll(fn func(e EnvFlag)) {
 	commandLine.VisitAll(fn)
 }
 
-var commandLine = NewEnvSet(flag.CommandLine, "")
+var commandLine = NewEnvSet(flag.CommandLine)
 
-// Prefix sets the prefix used by the package level env set functions
-var Prefix = ""
+// CommandLinePrefix sets the prefix used by the package level env set functions.
+func CommandLinePrefix(prefix ...string) {
+	if commandLine.prefix != "" {
+		panic("prefix already set: " + commandLine.prefix)
+	}
+	if Parsed() {
+		panic("default commandline envset already parsed")
+	}
+	commandLine.prefix = strings.ToUpper(strings.Join(prefix, "_"))
+}
