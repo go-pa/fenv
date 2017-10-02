@@ -18,7 +18,7 @@ func CommandLinePrefix(prefix ...string) {
 	if commandLine.prefix != "" {
 		panic("prefix already set: " + commandLine.prefix)
 	}
-	if Parsed() {
+	if commandLine.Parsed() {
 		panic("default commandline envset already parsed")
 	}
 	commandLine.prefix = strings.ToUpper(strings.Join(prefix, "_"))
