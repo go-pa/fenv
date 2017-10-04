@@ -36,13 +36,14 @@ func TestParseError(t *testing.T) {
   "Value": 0,
   "DefValue": "0"
  },
- "Value": "NOTINT",
  "Name": "T",
+ "Value": "NOTINT",
  "AllNames": [
   "ABC123",
   "T",
   "FOO"
  ],
+ "IsSet": false,
  "Err": {
   "Func": "ParseInt",
   "Num": "NOTINT",

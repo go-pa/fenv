@@ -54,18 +54,7 @@ var ErrAlreadyParsed = errors.New("the envset is already parsed")
 var ErrMultipleSet = errors.New("multiple errors encountered when calling flag.Set()")
 
 // FlagError
-type FlagError struct {
-	// the associated flag.Flag
-	Flag *flag.Flag
-	// the value which failed to parse
-	Value string
-	// the environment variable name which failed to parse
-	Name string
-	// all the env variable names mapped associated with the flag
-	AllNames []string
-	// the actual flag parse error
-	Err error
-}
+type FlagError EnvFlag
 
 func (f FlagError) Error() string {
 	return fmt.Sprintf("failed to set flag %q with value %q", f.Flag.Name, f.Value)
