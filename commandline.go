@@ -36,6 +36,13 @@ func Parse() error {
 	return commandLine.Parse()
 }
 
+func MustParse() {
+	err := Parse()
+	if err != nil {
+		panic(err)
+	}
+}
+
 func Parsed() bool {
 	commandLineMu.Lock()
 	defer commandLineMu.Unlock()
