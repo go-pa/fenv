@@ -14,7 +14,7 @@ func NewEnvSet(fs *flag.FlagSet, opt ...Option) *EnvSet {
 		fs:      fs,
 		names:   make(map[string][]string),
 		exclude: make(map[string]bool),
-		applied: make(map[string]string),
+		self:    make(map[string]bool),
 		env:     make(map[string]string),
 		errs:    make(map[string]error),
 	}
@@ -33,17 +33,29 @@ func ParseSet(fs *flag.FlagSet, opt ...Option) error {
 type EnvFlag struct {
 	// the associated flag.Flag
 	Flag *flag.Flag
+
 	// the environment variable name which the value for flag parsing was
-	// extracted from. This field is set regardless of if the flag.Set
+	// extracted from. This field is set regardless if setting the flag succeeded or not
 	// succeeds or fails.
 	Name string
-	// the value of the Name environment variable
+
+	// Value is the value of the environmet variable Name.
 	Value string
-	// all the env variable names mapped associated with the flag.
-	AllNames []string
-	// true when the flag has been sucessfully set by the envsdert
+
+	// all the environment variable names mapped associated with the flag.
+	Names []string
+
+	// Values for all corresponding Names which were present when EnvSet.Parse() was called.
+	Env map[string]string
+
+	// IsSet is true if the flag has been set by the owning EnvSet.Parse() function or another method like the stdlib FlagSet.Parse() method.
 	IsSet bool
-	// error caused by flag.Set
+
+	// IsSelfSet is true if the flag value was successfully set by the
+	// associated EnvSet.Parse() function.
+	IsSelfSet bool
+
+	// error caused by flag.Set when the envset tried to set it
 	Err error
 }
 
@@ -62,38 +74,41 @@ func (f FlagError) Error() string {
 
 // EnvSet adds environment variable support for flag.FlagSet.
 type EnvSet struct {
-	fs              *flag.FlagSet
-	prefix          string
-	continueOnError bool // parses all flags even if one fails
+	fs              *flag.FlagSet // associated FlagSet
+	prefix          string        // the environment variable name prefix
+	continueOnError bool          // continue to parse flags after failing to set
+	parsed          bool          // true after Parse() has been run
+
+	//  the key is the environment variable name
+	env envmap // environmenet variables collected by Parse(), may be partial
 
 	// the key for all these maps are based on the flag.Flag.Name
-	names   map[string][]string // all en var names
+	names   map[string][]string // all configured env var names
 	exclude map[string]bool     // excluded from env vars
-	applied map[string]string   // flags which value was set by a specific env var
-	env     map[string]string   // the environment when parse was run
 	errs    map[string]error    // errors which occured during flag.Set()
-	parsed  bool                // true after Parse() has been run
+	self    map[string]bool     // was the flag set by this EnvSet
+
 }
 
 // Var enables associattion with environment variable names other than the default auto generated ones
 //
 // If no name argument is supplied the variable will be excluded from
-// environment pasrsing. The special name value emtpy string "" will be
-// translated to the automatically generated environment variable name.
-func (s *EnvSet) Var(v interface{}, names ...string) {
-	f, err := s.findFlag(v)
+// environment pasrsing and the EnvSet.VisitAll method. The special name value
+// emtpy string "" will be translated to the automatically generated
+// environment variable name. This function will panic if given an
+func (s *EnvSet) Var(value interface{}, names ...string) {
+	f, err := s.findFlag(value)
 	if err != nil {
 		panic(err)
 	}
 	if f == nil {
-		panic(fmt.Sprintf("%T (%v) is not a member of the flagset", v, v))
+		panic(fmt.Sprintf("%T (%v) is not a member of the flagset", value, value))
 	}
 	if len(names) == 0 {
 		s.exclude[f.Name] = true
 		delete(s.names, f.Name)
 		return
 	}
-
 	for i, v := range names {
 		names[i] = fmtEnv(v)
 	}
@@ -126,15 +141,14 @@ func (s *EnvSet) Parse() error {
 	return s.ParseEnv(OSEnv())
 }
 
-func (s *EnvSet) ParseEnv(e map[string]string) error {
+func (s *EnvSet) ParseEnv(env map[string]string) error {
 	if s.parsed {
 		return ErrAlreadyParsed
 	}
 	s.parsed = true
 	actual := make(map[string]bool)
-	s.fs.Visit(func(f *flag.Flag) {
-		actual[f.Name] = true
-	})
+	s.fs.Visit(func(f *flag.Flag) { actual[f.Name] = true })
+	em := envmap(env)
 	var (
 		err  error
 		nerr int
@@ -143,31 +157,33 @@ func (s *EnvSet) ParseEnv(e map[string]string) error {
 		if s.exclude[f.Name] {
 			return
 		}
-		allNames := s.allNames(f)
+		names := s.allNames(f)
+		s.names[f.Name] = names
+		env := em.findAll(names)
+		s.env.update(env)
 		if actual[f.Name] {
 			return // skip if already set
 		}
-	eachName:
-		for _, name := range allNames {
-			v := e[name]
-			if v != "" {
-				s.applied[f.Name] = name
-				s.env[name] = v
-				if s.continueOnError || err == nil {
-					if ferr := f.Value.Set(v); ferr != nil {
-						nerr++
-						s.errs[f.Name] = ferr
-						err = FlagError{
-							Flag:     f,
-							Value:    v,
-							Name:     name,
-							AllNames: allNames,
-							Err:      ferr,
-						}
-					}
+		if err != nil && !s.continueOnError {
+			return
+		}
+		name, found := env.findFirst(names)
+		if found {
+			if ferr := f.Value.Set(env[name]); ferr != nil {
+				nerr++
+				s.errs[f.Name] = ferr
+				err = FlagError{
+					Flag:  f,
+					Env:   env,
+					Name:  name,
+					Value: env[name],
+					Names: names,
+					Err:   ferr,
 				}
-				break eachName
+			} else {
+				s.self[f.Name] = true
 			}
+
 		}
 	})
 	if nerr > 1 {
@@ -179,21 +195,23 @@ func (s *EnvSet) ParseEnv(e map[string]string) error {
 // Visit visits all non exluded EnvFlags in the flagset
 func (s *EnvSet) VisitAll(fn func(e EnvFlag)) {
 	actual := make(map[string]bool)
-	s.fs.Visit(func(f *flag.Flag) {
-		actual[f.Name] = true
-	})
+	s.fs.Visit(func(f *flag.Flag) { actual[f.Name] = true })
 	s.fs.VisitAll(func(f *flag.Flag) {
 		n := f.Name
 		if s.exclude[n] {
 			return
 		}
+		allNames := s.allNames(f)
+		name, _ := s.env.findFirst(allNames)
 		fn(EnvFlag{
-			Flag:     f,
-			Name:     s.applied[n],
-			AllNames: s.allNames(f),
-			IsSet:    actual[f.Name],
-			Value:    s.env[s.applied[n]],
-			Err:      s.errs[f.Name],
+			Flag:      f,
+			Name:      name,
+			Value:     s.env[name],
+			Names:     allNames,
+			IsSet:     actual[f.Name] || s.self[f.Name],
+			IsSelfSet: s.self[f.Name],
+			Env:       s.env.findAll(allNames),
+			Err:       s.errs[f.Name],
 		})
 	})
 }
@@ -217,7 +235,7 @@ func (s *EnvSet) findFlag(v interface{}) (*flag.Flag, error) {
 	return flg, nil
 }
 
-// allNames return all environment namesg for a given flag
+// allNames return all environment names for a given flag
 func (s *EnvSet) allNames(f *flag.Flag) []string {
 	var allNames []string
 	if names, ok := s.names[f.Name]; ok {

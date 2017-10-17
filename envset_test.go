@@ -16,7 +16,7 @@ func TestParseError(t *testing.T) {
 	fs.IntVar(&v2, "abc124", 0, "")
 	es.Var(&v, "", "t", "foo")
 	es.Var(&v2, "", "d")
-	err := es.ParseEnv(env{
+	err := es.ParseEnv(envmap{
 		"T": "NOTINT",
 		"D": "NOTINT",
 	})
@@ -38,12 +38,16 @@ func TestParseError(t *testing.T) {
  },
  "Name": "T",
  "Value": "NOTINT",
- "AllNames": [
+ "Names": [
   "ABC123",
   "T",
   "FOO"
  ],
+ "Env": {
+  "T": "NOTINT"
+ },
  "IsSet": false,
+ "IsSelfSet": false,
  "Err": {
   "Func": "ParseInt",
   "Num": "NOTINT",
@@ -78,7 +82,7 @@ func TestContinueOnError(t *testing.T) {
 	fs.IntVar(&v2, "abc124", 0, "")
 	es.Var(&v, "", "t", "foo")
 	es.Var(&v2, "", "d")
-	err := es.ParseEnv(env{
+	err := es.ParseEnv(envmap{
 		"T": "NOTINT",
 		"D": "NOTINT",
 	})
@@ -109,7 +113,7 @@ func TestAlredyParsed(t *testing.T) {
 	if err := fs.Parse([]string{"-t1", "v1"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := es.ParseEnv(env{
+	if err := es.ParseEnv(envmap{
 		"T1": "wrong",
 		"T2": "v2",
 	}); err != nil {
@@ -134,7 +138,7 @@ func TestPrefix(t *testing.T) {
 	es := NewEnvSet(fs, Prefix("pre", "fixes"))
 	var v string
 	fs.StringVar(&v, "testtest", "", "")
-	if err := es.ParseEnv(env{
+	if err := es.ParseEnv(envmap{
 		"PRE_FIXESTESTTEST": "BOO",
 	}); err != nil {
 		t.Fatal(err)
@@ -185,13 +189,36 @@ func TestEnvSet(t *testing.T) {
 		var v string
 		es.Var(v)
 	})
-	if err := es.ParseEnv(env{
+	if err := es.ParseEnv(envmap{
 		"TEST_1": "BOO",
 		"TEST_2": "FOO",
 		"TEST3":  "FOO",
 		"TEST4":  "V4",
 	}); err != nil {
 		t.Fatal(err)
+	}
+	expected := map[string]EnvFlag{
+		"test-1": EnvFlag{
+			Name:  "TEST4",
+			Names: []string{"TEST4", "TEST_1", "TEST"},
+			Env: map[string]string{
+				"TEST4":  "V4",
+				"TEST_1": "BOO",
+			},
+			IsSet:     true,
+			IsSelfSet: true,
+			Value:     "V4",
+		},
+		"test.2": EnvFlag{
+			Name:  "TEST_2",
+			Names: []string{"TEST", "TEST_2", "TEST"},
+			Env: map[string]string{
+				"TEST_2": "FOO",
+			},
+			IsSet:     true,
+			IsSelfSet: true,
+			Value:     "FOO",
+		},
 	}
 	if err := fs.Parse([]string{}); err != nil {
 		t.Fatal(err)
@@ -205,27 +232,14 @@ func TestEnvSet(t *testing.T) {
 	if v3 != "default" {
 		t.Fatal(v3)
 	}
-	{
-		expected := map[string]EnvFlag{
-			"test-1": {
-				Name:     "TEST4",
-				AllNames: []string{"TEST4", "TEST_1", "TEST"},
-				Value:    "V4",
-			},
-			"test.2": {
-				Name:     "TEST_2",
-				AllNames: []string{"TEST", "TEST_2", "TEST"},
-				Value:    "FOO",
-			},
+	es.VisitAll(func(e EnvFlag) {
+		exp := expected[e.Flag.Name]
+		exp.Flag = e.Flag
+		if !reflect.DeepEqual(exp, e) {
+
+			t.Fatalf("\nexp:%v\ngot:%v", jsonstr(exp), jsonstr(e))
 		}
-		es.VisitAll(func(e EnvFlag) {
-			exp := expected[e.Flag.Name]
-			exp.Flag = e.Flag
-			if !reflect.DeepEqual(exp, e) {
-				t.Fatal(exp, e)
-			}
-		})
-	}
+	})
 }
 
 func assertPanic(t *testing.T, f func()) {
@@ -244,4 +258,13 @@ func visitPrint(e EnvFlag) {
 		panic(err)
 	}
 	fmt.Println(string(data))
+}
+
+// for debugging: es.VisitAll(visitPrint)
+func jsonstr(e EnvFlag) string {
+	data, err := json.MarshalIndent(&e, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	return string(data)
 }

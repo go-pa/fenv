@@ -13,6 +13,7 @@ import (
 // Package level usage
 func Example_package() {
 	var s1, s2, s3 string
+	fenv.CommandLinePrefix("HELLO_") // default env var name prefix
 
 	flag.StringVar(&s1, "flag.1", "", "") // env var FLAG_1 is automatically added
 
@@ -22,9 +23,9 @@ func Example_package() {
 	flag.StringVar(&s3, "flag3", "", "")
 	fenv.Var(&s3) // excludes the var from being parsed as an enviroment variable.
 
-	os.Setenv("FLAG_1", "v1")
+	os.Setenv("HELLO_FLAG_1", "v1")
 	os.Setenv("ALT_NAME", "v2.alt")
-	os.Setenv("FLAG_2", "v2")
+	os.Setenv("HELLO_FLAG_2", "v2")
 
 	fmt.Println("before Parse()")
 	fenv.VisitAll(func(e fenv.EnvFlag) {
@@ -35,10 +36,7 @@ func Example_package() {
 		}
 	})
 
-	// call fenv.Parse() before flag.Parse()
-	if err := fenv.Parse(); err != nil {
-		panic(err)
-	}
+	fenv.MustParse() // call fenv.Parse() before flag.Parse()
 	flag.Parse()
 
 	fmt.Println("after Parse()")
@@ -55,7 +53,7 @@ func Example_package() {
 	// flag.1:
 	// flag2:
 	// after Parse()
-	// flag.1:FLAG_1
+	// flag.1:HELLO_FLAG_1
 	// flag2:ALT_NAME
 	// values v1 v2.alt true
 
