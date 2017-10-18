@@ -48,7 +48,7 @@ type EnvFlag struct {
 	// Values for all corresponding Names which were present when EnvSet.Parse() was called.
 	Env map[string]string
 
-	// IsSet is true if the flag has been set by the owning EnvSet.Parse() function or another method like the stdlib FlagSet.Parse() method.
+	// IsSet is true if the flag has been set by the owning EnvSet.Parse() function or by the associated FlagSet.
 	IsSet bool
 
 	// IsSelfSet is true if the flag value was successfully set by the
